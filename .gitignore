@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Machine Learning Models
+*.h5
+*.tflite
+*.pb
+
+# Generated Edge Files
+edge/model/model_data.h
+edge/model/model_int8.tflite
+
+# NumPy arrays (calibration data)
+*.npy
+
+# Paper drafts
+Paper_Draft.md
+draft_paper011125.md
+Q1_MI_Conformal_Notes.md
+
+# Datasets (user should ensure these are not present)
+*.csv
+*.xls
+*.xlsx
+*.dat
+
+# IDE-specific
+.vscode/
+.idea/
+
+# ESP-IDF
+edge/firmware/build/
+edge/firmware/sdkconfig
+
+# OS-specific
+.DS_Store
+Thumbs.db

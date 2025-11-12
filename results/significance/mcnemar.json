@@ -1,0 +1,10 @@
+{
+  "n01_improved_wrong_resnet_right": 90,
+  "n10_improved_right_resnet_wrong": 44,
+  "n00_both_wrong": 102,
+  "n11_both_right": 1277,
+  "p_value_two_sided": 8.745456628345134e-05,
+  "n_discordant": 134,
+  "accuracy_improved": 0.8730998017184401,
+  "accuracy_resnet": 0.9035029742233972
+}
