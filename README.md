@@ -82,4 +82,4 @@ Follow the detailed instructions in the `edge/README.md` file to build and flash
 
 If you use this code or research in your work, please cite our paper:
 
-> [Your Name(s)]. (Year). "Reliable Myocardial Infarction Detection from 12-Lead ECG via Split-Conformal Prediction on PTB-XL." *[Journal/Conference Name]*. 
+> [Oussama El Allam]. (2025). "Reliable Myocardial Infarction Detection from 12-Lead ECG via Split-Conformal Prediction on PTB-XL." *[under review]*. 
