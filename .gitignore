@@ -48,6 +48,7 @@ Q1_MI_Conformal_Notes.md
 *.xls
 *.xlsx
 *.dat
+ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3/
 
 # IDE-specific
 .vscode/

@@ -224,6 +224,15 @@ if __name__ == '__main__':
     plt.savefig('results/pr_curve.png')
     plt.close()
 
+    # Save predictions for comparison plots
+    y_pred_binary = (y_pred_prob > 0.5).astype(int)
+    pd.DataFrame({
+        'y_true': y_test,
+        'y_score': y_pred_prob,
+        'y_pred': y_pred_binary
+    }).to_csv('results/improved_predictions.csv', index=False)
+    print("Saved predictions to results/improved_predictions.csv")
+
     metrics = {
         'test_loss': float(test_loss),
         'test_accuracy': float(test_accuracy),
