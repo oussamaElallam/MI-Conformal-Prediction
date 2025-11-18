@@ -100,6 +100,11 @@ def load_and_preprocess_data(base_path):
     X_val = (X_val - lead_mean) / lead_std
     X_test = (X_test - lead_mean) / lead_std
 
+    # Save normalization statistics for later use
+    os.makedirs('results', exist_ok=True)
+    np.save('results/improved_lead_mean.npy', lead_mean)
+    np.save('results/improved_lead_std.npy', lead_std)
+
     classes = np.unique(y_train)
     class_weights_arr = compute_class_weight('balanced', classes=classes, y=y_train)
     class_weight_dict = {int(c): float(w) for c, w in zip(classes, class_weights_arr)}
