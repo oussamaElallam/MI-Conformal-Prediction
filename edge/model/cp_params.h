@@ -5,10 +5,12 @@
 #include <stdint.h>
 
 #define CP_EPSILON 0.100000f
-#define CP_TAU_NORM 0.41011679f
-#define CP_TAU_MI 0.73384130f
+#define CP_TAU_NORM 0.01171875f
+#define CP_TAU_MI 1.00000000f
 
 // TFLite output dequantization: y = scale * (q - zp)
+#define CP_IN_SCALE 0.4118056893f
+#define CP_IN_ZP 8
 #define CP_OUT_SCALE 0.0039062500f
 #define CP_OUT_ZP -128
 

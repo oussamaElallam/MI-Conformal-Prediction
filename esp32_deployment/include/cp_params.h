@@ -1,0 +1,18 @@
+
+#ifndef CP_PARAMS_H
+#define CP_PARAMS_H
+
+#include <stdint.h>
+
+#define CP_EPSILON 0.100000f
+#define CP_TAU_NORM 0.41011679f
+#define CP_TAU_MI 0.73384130f
+
+// TFLite output dequantization: y = scale * (q - zp)
+#define CP_OUT_SCALE 0.0039062500f
+#define CP_OUT_ZP -128
+
+static const float CP_LEAD_MEAN[12] = { -0.00218331f, -0.00158131f, 0.00060228f, 0.00186790f, -0.00133465f, -0.00046199f, -0.00014790f, -0.00105775f, -0.00166473f, -0.00132133f, -0.00109315f, -0.00314066f };
+static const float CP_LEAD_STD[12]  = { 0.15527700f, 0.15333862f, 0.15268834f, 0.13411858f, 0.13353306f, 0.13171910f, 0.20697670f, 0.30226342f, 0.29531500f, 0.27095422f, 0.24841835f, 0.29510965f };
+
+#endif // CP_PARAMS_H

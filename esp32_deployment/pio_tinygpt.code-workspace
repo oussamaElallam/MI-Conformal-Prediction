@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "pio_tinygpt",
+			"path": "../../pio_tinygpt"
+		},
+		{
+			"name": "esp32_deployment",
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"vocab_c.h": "c"
+		}
+	}
+}
