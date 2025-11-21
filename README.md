@@ -1,4 +1,4 @@
-# Reliable Myocardial Infarction Detection with Split-Conformal Prediction
+# Reliable Myocardial Infarction Detection on Edge Devices via Split-Conformal Prediction
 
 This repository contains the complete code and artifacts for the paper, "Reliable Myocardial Infarction Detection from 12-Lead ECG via Split-Conformal Prediction on PTB-XL." It provides a framework for training a 12-lead ECG model for MI detection, augmenting it with a statistically rigorous uncertainty quantification layer using split-conformal prediction, and deploying it on an edge device (ESP32S3).
 
@@ -82,4 +82,4 @@ Follow the detailed instructions in the `edge/README.md` file to build and flash
 
 If you use this code or research in your work, please cite our paper:
 
-> [Oussama El Allam]. (2025). "Reliable Myocardial Infarction Detection from 12-Lead ECG via Split-Conformal Prediction on PTB-XL." *[under review]*. 
+> [Oussama El Allam]. (2025). "Reliable Myocardial Infarction Detection on Edge Devices via Split-Conformal Prediction" *[under review]*. 
