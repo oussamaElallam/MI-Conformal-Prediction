@@ -67,7 +67,7 @@ python -m validation.validate_on_chapman
 ## Citation
 If you use this code or research in your work, please cite our paper:
 ```
-El Allam, O., & Hamlich, M. (2025). Reliable Myocardial Infarction Detection on Edge Devices via Split-Conformal Prediction. Computers in Biology and Medicine (Under Review).
+El Allam, O., & Hamlich, M. (2025). Reliable Myocardial Infarction Detection on Edge Devices via Split-Conformal Prediction. (Under Review).
 ```
 
 ## License
