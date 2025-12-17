@@ -1,6 +1,6 @@
-# Reliable Myocardial Infarction Detection on Edge Devices via Split-Conformal Prediction
+# Quantization-Aware Conformal Prediction Framework for Trustworthy Myocardial Infarction Detection: Implementation and Validation on Resource-Constrained Hardware
 
-This repository contains the complete code, models, and experimental artifacts for the paper: **"Reliable Myocardial Infarction Detection on Edge Devices via Split-Conformal Prediction"**.
+This repository contains the complete code, models, and experimental artifacts for the paper: **"Quantization-Aware Conformal Prediction Framework for Trustworthy Myocardial Infarction Detection: Implementation and Validation on Resource-Constrained Hardware"**.
 
 It implements a comprehensive framework for:
 1. **Training** a lightweight 12-lead ECG CNN for Myocardial Infarction (MI) detection.
