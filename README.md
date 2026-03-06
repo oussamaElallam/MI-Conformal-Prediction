@@ -1,6 +1,6 @@
-# Quantization-Aware Conformal Prediction Framework for Trustworthy Myocardial Infarction Detection: Implementation and Validation on Resource-Constrained Hardware
+# Uncertainty-Aware Embedded Cardiac Monitoring: Quantization-Robust Coverage Guarantees on Resource-Constrained IoT Devices
 
-This repository contains the complete code, models, and experimental artifacts for the paper: **"Quantization-Aware Conformal Prediction Framework for Trustworthy Myocardial Infarction Detection: Implementation and Validation on Resource-Constrained Hardware"**.
+This repository contains the complete code, models, and experimental artifacts for the paper: **"Uncertainty-Aware Embedded Cardiac Monitoring: Quantization-Robust Coverage Guarantees on Resource-Constrained IoT Devices"**.
 
 It implements a comprehensive framework for:
 1. **Training** a lightweight 12-lead ECG CNN for Myocardial Infarction (MI) detection.
@@ -67,7 +67,7 @@ python -m validation.validate_on_chapman
 ## Citation
 If you use this code or research in your work, please cite our paper:
 ```
-El Allam, O., & Hamlich, M. (2025). Quantization-Aware Conformal Prediction Framework for Trustworthy Myocardial Infarction Detection: Implementation and Validation on Resource-Constrained Hardware. (Under Review).
+El Allam, O., & Hamlich, M. (2025). Uncertainty-Aware Embedded Cardiac Monitoring: Quantization-Robust Coverage Guarantees on Resource-Constrained IoT Devices. (Under Review).
 ```
 
 ## License
