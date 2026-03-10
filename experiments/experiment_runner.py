@@ -373,6 +373,7 @@ def run_experiment(
     results = {
         'model_name': model_name,
         'fold_config': asdict(fold_config),
+        'fold_config_name': fold_config.name,
         'seed': seed,
         'n_params': int(model.count_params()),
         'epochs_trained': n_epochs_trained,
@@ -398,7 +399,7 @@ def run_experiment(
 def save_results(results: Dict[str, Any], output_dir: str, tag: str = ''):
     """Save experiment results as JSON."""
     os.makedirs(output_dir, exist_ok=True)
-    fname = f"{results['model_name']}_{results['fold_config']['name']}"
+    fname = f"{results['model_name']}_{results['fold_config_name']}"
     if tag:
         fname += f"_{tag}"
     fname += ".json"
