@@ -9,7 +9,7 @@ import ast
 import json
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, Input
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, Dense, Input, GlobalAveragePooling1D, BatchNormalization, Activation
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.metrics import AUC
 
@@ -117,11 +117,15 @@ def create_model(input_shape):
     """Creates the 1D-CNN model for 12-lead input."""
     model = Sequential([
         Input(shape=input_shape),
-        Conv1D(filters=32, kernel_size=5, activation='relu'),
+        Conv1D(filters=32, kernel_size=5, padding='same', use_bias=False),
+        BatchNormalization(),
+        Activation('relu'),
         MaxPooling1D(pool_size=2),
-        Conv1D(filters=64, kernel_size=5, activation='relu'),
+        Conv1D(filters=64, kernel_size=5, padding='same', use_bias=False),
+        BatchNormalization(),
+        Activation('relu'),
         MaxPooling1D(pool_size=2),
-        Flatten(),
+        GlobalAveragePooling1D(),
         Dense(64, activation='relu'),
         Dense(1, activation='sigmoid')
     ])

@@ -8,7 +8,7 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, Input
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, Dense, Input, GlobalAveragePooling1D, BatchNormalization, Activation
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.metrics import AUC
 
@@ -59,11 +59,15 @@ def load_signals_for_rows(base_path, rows):
 def create_model(input_shape):
     model = Sequential([
         Input(shape=input_shape),
-        Conv1D(32, 5, activation='relu'),
+        Conv1D(32, 5, padding='same', use_bias=False),
+        BatchNormalization(),
+        Activation('relu'),
         MaxPooling1D(2),
-        Conv1D(64, 5, activation='relu'),
+        Conv1D(64, 5, padding='same', use_bias=False),
+        BatchNormalization(),
+        Activation('relu'),
         MaxPooling1D(2),
-        Flatten(),
+        GlobalAveragePooling1D(),
         Dense(64, activation='relu'),
         Dense(1, activation='sigmoid')
     ])

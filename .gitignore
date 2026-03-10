@@ -61,3 +61,6 @@ edge/firmware/sdkconfig
 # OS-specific
 .DS_Store
 Thumbs.db
+
+results/
+experiments/results/

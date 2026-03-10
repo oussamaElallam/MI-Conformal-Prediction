@@ -17,7 +17,7 @@ Ablation variants (Reviewer 2, Point 3):
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import (
-    Input, Conv1D, MaxPooling1D, Flatten, Dense, GlobalAveragePooling1D,
+    Input, Conv1D, MaxPooling1D, Dense, GlobalAveragePooling1D,
     BatchNormalization, Activation, Add, Dropout,
     SeparableConv1D, LayerNormalization
 )
@@ -39,14 +39,18 @@ def _compile(model):
 # ─────────────────────────────────────────────
 
 def create_lightweight_cnn(input_shape):
-    """Paper primary model: ~50K params, 2 conv blocks + FC."""
+    """Paper primary model: ~17K params, 2 conv blocks with BN + GAP + FC."""
     model = Sequential([
         Input(shape=input_shape),
-        Conv1D(32, 5, activation='relu'),
+        Conv1D(32, 5, padding='same', use_bias=False),
+        BatchNormalization(),
+        Activation('relu'),
         MaxPooling1D(2),
-        Conv1D(64, 5, activation='relu'),
+        Conv1D(64, 5, padding='same', use_bias=False),
+        BatchNormalization(),
+        Activation('relu'),
         MaxPooling1D(2),
-        Flatten(),
+        GlobalAveragePooling1D(),
         Dense(64, activation='relu'),
         Dense(1, activation='sigmoid')
     ])
@@ -237,11 +241,13 @@ def create_lightweight_cnn_ablation(input_shape,
     filter_schedule = [n_filters_1, n_filters_2] + [n_filters_2 * 2] * (n_blocks - 2)
     for i in range(n_blocks):
         n_filt = filter_schedule[i] if i < len(filter_schedule) else n_filters_2
-        layers.append(Conv1D(n_filt, kernel_size, activation='relu'))
+        layers.append(Conv1D(n_filt, kernel_size, padding='same', use_bias=False))
+        layers.append(BatchNormalization())
+        layers.append(Activation('relu'))
         layers.append(MaxPooling1D(2))
 
     layers.extend([
-        Flatten(),
+        GlobalAveragePooling1D(),
         Dense(fc_units, activation='relu'),
         Dense(1, activation='sigmoid')
     ])
