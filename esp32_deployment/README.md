@@ -206,3 +206,22 @@ For issues:
 ## License
 
 Same as main project.
+
+## On-device benchmark (measured latency / RAM / power)
+
+`src/main_benchmark.cpp` is an instrumented build that reports the measured
+hardware metrics (replacing any estimated values):
+
+- inference latency: mean / std / min / median / max over `NUM_INFERENCES`
+- preprocessing (normalize + int8 quantize) and end-to-end timing
+- `arena_used_bytes()` — the real tensor-arena RAM
+- internal-SRAM high-water and model flash footprint
+- active power: set `POWER_BENCH 1`, then read steady-state W on a USB-C power meter
+
+```bash
+pio run -e seeed_xiao_esp32s3_benchmark -t upload && pio device monitor
+```
+
+By default the arena is allocated in **internal SRAM** (`USE_PSRAM_ARENA 0`). If
+`AllocateTensors` succeeds, the model fits without external PSRAM; otherwise set
+`USE_PSRAM_ARENA 1` and report the arena as PSRAM-resident.
