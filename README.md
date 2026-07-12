@@ -1,91 +1,83 @@
-# Uncertainty-Aware Embedded Cardiac Monitoring: Quantization-Robust Coverage Guarantees on Resource-Constrained IoT Devices
+# Quantization-aware conformal ECG case study
 
-This repository contains the complete code for the paper: **"Uncertainty-Aware Embedded Cardiac Monitoring: Quantization-Robust Coverage Guarantees on Resource-Constrained IoT Devices"**.
+This repository contains the code for the PTB-XL/Chapman-Shaoxing embedded ECG study. The primary contribution is an engineering evaluation of Mondrian split-conformal prediction with a fully INT8 deployment model. The code does not claim per-patient “90% confidence,” guaranteed performance under distribution shift, or a clinically deployable monitoring system.
 
-It implements a comprehensive framework for:
-1. **Training** a lightweight 12-lead ECG CNN (~17K parameters) for Myocardial Infarction (MI) detection.
-2. **Quantifying Uncertainty** using Mondrian Split-Conformal Prediction to provide statistically valid error guarantees.
-3. **Edge Deployment** on an ESP32S3 microcontroller with quantization-aware calibration.
+## Authoritative PTB-XL pipeline
 
-## Project Structure
+Use one trained model for every primary table and figure. Do not combine values produced by `improved_mi_classification.py` with values from the split-conformal model.
 
-* `requirements.txt`: Python package dependencies.
-* `edge/`: Toolkit for ESP32S3 deployment (Firmware + TF Lite Micro conversion).
-* `validation/`: Scripts for external validation on the Chapman-Shaoxing dataset.
-* `experiments/`: Fold stability, architecture comparison, and ablation study scripts.
-
-### Core Scripts
-* `improved_mi_classification.py`: Trains the lightweight CNN on PTB-XL using rigorous patient-wise splitting.
-* `train_split_conformal_model.py`: Calibrates the model using the Mondrian conformal prediction framework.
-* `conformal_prediction_evaluation.py`: Evaluates coverage validity and efficiency (average set size).
-
-### Analysis & Utilities
-* `resnet1d_baseline.py`: Trains the ResNet1D baseline for performance comparison.
-* `compare_models_mcnemar.py`: Performs statistical significance testing (McNemar's test).
-* `interpretability_integrated_gradients.py`: Generates saliency maps for clinical interpretability.
-
-## Data Setup
-
-1. **PTB-XL Dataset**: Download from [PhysioNet](https://physionet.org/content/ptb-xl/). Extract files into the root directory.
-2. **Chapman-Shaoxing Dataset**: (Optional for validation) Download from [Figshare](https://figshare.com/collections/ChapmanECG/4560497/1). Place in `chapman_shaoxing/` directory.
-
-## How to Run
-
-### 1. Setup Environment
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+python train_split_conformal_model.py \
+  --base_path <PTB-XL-DIR>
+python edge/export_tflite_micro_model.py \
+  --base_path <PTB-XL-DIR>
+python edge/compute_cp_thresholds.py
+python conformal_prediction_evaluation.py \
+  --base_path <PTB-XL-DIR>
+python -m experiments.run_fp32_int8_calibration_comparison \
+  --base_path <PTB-XL-DIR>
 ```
 
-### 2. Reproduce Main Results (PTB-XL)
-```bash
-# Train the Lightweight CNN
-python improved_mi_classification.py
+`train_split_conformal_model.py` is the single source of truth for the primary Lightweight CNN. It uses folds 1–8 as a development pool, fold 9 for early stopping and fold 10 as the untouched test set. Proper training and conformal calibration are split by `patient_id` (with an explicitly logged record fallback only when an identifier is missing). Normalization statistics are calculated from proper training only.
 
-# Train and Calibrate Conformal Predictor
-python train_split_conformal_model.py
+Important outputs:
 
-# Evaluate Conformal Metrics (Coverage/Set Size)
-python conformal_prediction_evaluation.py
+- `results/split_conformal/metrics.json`
+- `results/split_conformal/test_predictions_fp32.csv`
+- `results/split_conformal/split_manifest.csv`
+- `results/split_conformal/artifact_manifest.json`
+- `results/conformal_tradeoff_metrics.csv`
+- `results/conformal_tradeoff_figure.png`
+- `experiments/results/fp32_int8_calibration/`
 
-# Train Baseline (Optional)
-python resnet1d_baseline.py
-```
+The FP32-versus-INT8 experiment compares:
 
-### 3. Run Extended Experiments
-```bash
-# Fold stability analysis (5 fold configurations)
-python -m experiments.run_fold_stability --base_path <PTB-XL-DIR>
+1. FP32 calibration outputs → the deployed INT8 test model.
+2. INT8 calibration outputs → the same deployed INT8 test model.
 
-# Architecture comparison (5 lightweight models)
-python -m experiments.run_architecture_comparison --base_path <PTB-XL-DIR>
+The model, calibration labels, test set, significance level and INT8 test probabilities are held fixed. Empty sets, singleton rate, average set size and class-conditional miscoverage are reported separately.
 
-# Ablation study (kernel size, depth, filter width)
-python -m experiments.run_ablation --base_path <PTB-XL-DIR>
+## Chapman-Shaoxing experiments
 
-# Or run all at once
-bash experiments/run_all.sh <PTB-XL-DIR>
-```
+External transfer without local retraining:
 
-### 4. Edge Deployment (ESP32S3)
-
-Navigate to the `edge/` directory. Follow the README.md inside that folder to:
-1. Quantize the model to INT8.
-2. Generate C++ arrays for the model and calibration thresholds.
-3. Build and flash the firmware using PlatformIO.
-
-### 5. External Validation
 ```bash
 python -m validation.validate_on_chapman
 ```
 
-## Citation
+Domain-matched in-distribution training, calibration and testing:
 
-If you use this code or research in your work, please cite our paper:
+```bash
+python -m experiments.run_chapman_in_distribution \
+  --data_dir <CHAPMAN-DIR> \
+  --short_record_policy skip
 ```
-El Allam, O., & Hamlich, M. (2025). Uncertainty-Aware Embedded Cardiac Monitoring:
-Quantization-Robust Coverage Guarantees on Resource-Constrained IoT Devices. (Under Review).
+
+The in-distribution script creates group-disjoint train/calibration/validation/test partitions. Explicit patient IDs are used when present; otherwise record IDs are used and the fallback is reported in the JSON and CSV manifests. Short records are excluded and logged by default. Use `--short_record_policy pad` only for a declared sensitivity analysis.
+
+Important outputs:
+
+- `experiments/results/chapman_in_distribution/chapman_split_manifest_used.csv`
+- `experiments/results/chapman_in_distribution/chapman_exclusions.csv`
+- `experiments/results/chapman_in_distribution/chapman_demographics_by_split.csv`
+- `experiments/results/chapman_in_distribution/chapman_in_distribution_metrics.csv`
+- `experiments/results/chapman_in_distribution/chapman_in_distribution_results.json`
+
+## Extended experiments
+
+```bash
+python -m experiments.run_fold_stability --base_path <PTB-XL-DIR>
+python -m experiments.run_architecture_comparison --base_path <PTB-XL-DIR>
+python -m experiments.run_ablation --base_path <PTB-XL-DIR>
 ```
 
-## License
+These runners use group-disjoint proper-training/calibration splits and training-only normalization.
 
-This project is licensed under the MIT License.
+## ESP32-S3 deployment
+
+The INT8 export is tied to the authoritative H5 model by SHA-256 manifests. `edge/compute_cp_thresholds.py` consumes the already-normalized calibration array exactly once and exports finite-sample class-specific thresholds. Hardware latency and RAM must be measured on the target board. Power values must be labelled as measured only when obtained with external instrumentation; otherwise label them as estimates.
+
+## Result-use rule
+
+Do not update the manuscript from console screenshots or separate training runs. Update all tables and figures from the generated CSV/JSON files in one completed run, and archive the artifact manifests with the revision.
