@@ -1,27 +1,14 @@
-"""Matched FP32-calibration versus INT8-calibration experiment.
+"""Matched FP32-calibration versus INT8-calibration conformal comparison.
 
-Reviewer question
------------------
-Does calibrating Mondrian conformal prediction on the deployed INT8 model change
-coverage or efficiency relative to the conventional workflow in which thresholds
-are derived from FP32 outputs and then applied to INT8 predictions?
-
-The comparison is deliberately paired:
-- one trained model,
-- one calibration set,
-- one test set,
-- one epsilon,
-- identical INT8 test probabilities.
-
-Usage
------
-python -m experiments.run_fp32_int8_calibration_comparison \
-    --base_path ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3
+Both workflows use the same trained model, calibration labels, test records,
+significance level, and deployed INT8 test predictions. Only calibration-time
+precision differs.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 
@@ -41,6 +28,14 @@ from experiments.reviewer_experiment_utils import (
 )
 
 
+def sha256_file(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def paper_table(rows: list[dict]) -> str:
     columns = [
         ("workflow", "Workflow", 31),
@@ -56,10 +51,9 @@ def paper_table(rows: list[dict]) -> str:
     for row in rows:
         values = []
         for key, _, width in columns:
-            if key == "workflow":
-                values.append(f"{row[key]:>{width}}")
-            else:
-                values.append(f"{row[key]:>{width}.4f}")
+            values.append(
+                f"{row[key]:>{width}}" if key == "workflow" else f"{row[key]:>{width}.4f}"
+            )
         lines.append(" ".join(values))
     return "\n".join(lines)
 
@@ -68,14 +62,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base_path", required=True, help="PTB-XL dataset root")
     parser.add_argument(
-        "--artifact_dir",
-        default=os.path.join("results", "split_conformal"),
-        help="Directory containing the fixed model, calibration set, and normalization stats",
+        "--artifact_dir", default=os.path.join("results", "split_conformal")
     )
     parser.add_argument(
-        "--int8_model",
-        default=os.path.join("edge", "model", "model_int8.tflite"),
-        help="Full-INT8 TFLite model exported from the same fixed Keras model",
+        "--int8_model", default=os.path.join("edge", "model", "model_int8.tflite")
+    )
+    parser.add_argument(
+        "--int8_manifest",
+        default=os.path.join("edge", "model", "model_int8_manifest.json"),
     )
     parser.add_argument("--epsilon", type=float, default=0.10)
     parser.add_argument("--seed", type=int, default=42)
@@ -89,70 +83,82 @@ def main() -> None:
     os.makedirs(args.output_dir, exist_ok=True)
 
     model_path = os.path.join(args.artifact_dir, "split_conformal_model.h5")
+    artifact_manifest_path = os.path.join(args.artifact_dir, "artifact_manifest.json")
     required = [
         model_path,
+        artifact_manifest_path,
         os.path.join(args.artifact_dir, "X_cal.npy"),
         os.path.join(args.artifact_dir, "y_cal.npy"),
         os.path.join(args.artifact_dir, "lead_mean.npy"),
         os.path.join(args.artifact_dir, "lead_std.npy"),
         args.int8_model,
+        args.int8_manifest,
     ]
     missing = [path for path in required if not os.path.exists(path)]
     if missing:
         raise FileNotFoundError("Missing required artifacts:\n- " + "\n- ".join(missing))
 
-    print("Loading fixed FP32 model and fixed calibration set...")
+    with open(artifact_manifest_path, encoding="utf-8") as handle:
+        artifact_manifest = json.load(handle)
+    with open(args.int8_manifest, encoding="utf-8") as handle:
+        int8_manifest = json.load(handle)
+    if artifact_manifest.get("x_cal_normalized") is not True:
+        raise RuntimeError("X_cal must be stored after exactly one normalization pass")
+    model_hash = sha256_file(model_path)
+    if model_hash != artifact_manifest.get("h5_model_sha256"):
+        raise RuntimeError("Authoritative H5 model hash mismatch")
+    if model_hash != int8_manifest.get("source_model_sha256"):
+        raise RuntimeError("INT8 model was not exported from the authoritative H5 model")
+    if sha256_file(args.int8_model) != int8_manifest.get("tflite_sha256"):
+        raise RuntimeError("INT8 model hash mismatch")
+
     model = tf.keras.models.load_model(model_path)
     x_cal = np.load(os.path.join(args.artifact_dir, "X_cal.npy"), mmap_mode="r")
     y_cal = np.load(os.path.join(args.artifact_dir, "y_cal.npy"))
-    lead_mean = np.load(os.path.join(args.artifact_dir, "lead_mean.npy"))
-    lead_std = np.load(os.path.join(args.artifact_dir, "lead_std.npy"))
+    mean = np.load(os.path.join(args.artifact_dir, "lead_mean.npy"))
+    std = np.load(os.path.join(args.artifact_dir, "lead_std.npy"))
 
-    print("Reconstructing the unchanged PTB-XL fold-10 test set...")
     metadata = parse_labels(args.base_path)
     x_test, y_test = load_signals_by_fold(args.base_path, metadata, [10])
     x_test = x_test.astype(np.float32, copy=False)
-    x_test -= lead_mean.astype(np.float32)
-    x_test /= lead_std.astype(np.float32)
+    x_test -= mean.astype(np.float32)
+    x_test /= std.astype(np.float32)
 
-    # Export a directly comparable FP32 TFLite file so the manuscript can
-    # report the real FP32-to-INT8 file-size ratio rather than the unrelated
-    # ResNet-to-lightweight parameter-count ratio.
     fp32_tflite_path = os.path.join(args.output_dir, "fixed_model_fp32.tflite")
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
     with open(fp32_tflite_path, "wb") as handle:
         handle.write(converter.convert())
 
-    print("Computing paired FP32 and INT8 probabilities...")
     fp32_cal_prob = model.predict(x_cal, verbose=0).reshape(-1)
     fp32_test_prob = model.predict(x_test, verbose=0).reshape(-1)
     int8_cal_prob = predict_tflite(args.int8_model, np.asarray(x_cal))
     int8_test_prob = predict_tflite(args.int8_model, x_test)
 
-    # Conventional: FP32 calibration, deployed INT8 test model.
     conventional_sets, conventional_p = mondrian_prediction_sets(
         fp32_cal_prob, y_cal, int8_test_prob, args.epsilon
     )
-    # Proposed: INT8 calibration, same deployed INT8 test model.
-    qa_sets, qa_p = mondrian_prediction_sets(
+    quantization_aware_sets, quantization_aware_p = mondrian_prediction_sets(
         int8_cal_prob, y_cal, int8_test_prob, args.epsilon
     )
 
     conventional_metrics = evaluate_prediction_sets(conventional_sets, y_test)
-    qa_metrics = evaluate_prediction_sets(qa_sets, y_test)
+    qa_metrics = evaluate_prediction_sets(quantization_aware_sets, y_test)
     conventional_metrics["workflow"] = "FP32 calibration -> INT8 test"
     qa_metrics["workflow"] = "INT8 calibration -> INT8 test"
     rows = [conventional_metrics, qa_metrics]
 
-    set_changed = np.any(conventional_sets != qa_sets, axis=1)
+    set_changed = np.any(conventional_sets != quantization_aware_sets, axis=1)
     conventional_covered = conventional_sets[np.arange(len(y_test)), y_test]
-    qa_covered = qa_sets[np.arange(len(y_test)), y_test]
+    qa_covered = quantization_aware_sets[np.arange(len(y_test)), y_test]
     paired_summary = {
         "n_test": int(len(y_test)),
         "set_membership_changed_count": int(set_changed.sum()),
         "set_membership_changed_rate": float(set_changed.mean()),
         "set_size_changed_count": int(
-            np.sum(conventional_sets.sum(axis=1) != qa_sets.sum(axis=1))
+            np.sum(
+                conventional_sets.sum(axis=1)
+                != quantization_aware_sets.sum(axis=1)
+            )
         ),
         "conventional_only_covered": int(np.sum(conventional_covered & ~qa_covered)),
         "qa_only_covered": int(np.sum(~conventional_covered & qa_covered)),
@@ -172,33 +178,25 @@ def main() -> None:
         ),
     }
 
-    # The discriminative score is not workflow-specific because both deployed
-    # conformal workflows use the same INT8 test probabilities.
-    discriminative = {
-        "fp32_test": classification_metrics(fp32_test_prob, y_test),
-        "int8_test": classification_metrics(int8_test_prob, y_test),
-    }
-
-    metrics_path = os.path.join(args.output_dir, "fp32_int8_calibration_metrics.csv")
-    pd.DataFrame(rows).to_csv(metrics_path, index=False)
-
-    sample_table = pd.DataFrame(
+    pd.DataFrame(rows).to_csv(
+        os.path.join(args.output_dir, "fp32_int8_calibration_metrics.csv"), index=False
+    )
+    pd.DataFrame(
         {
             "y_true": y_test,
             "fp32_probability_mi": fp32_test_prob,
             "int8_probability_mi": int8_test_prob,
             "conventional_p_normal": conventional_p[:, 0],
             "conventional_p_mi": conventional_p[:, 1],
-            "qa_p_normal": qa_p[:, 0],
-            "qa_p_mi": qa_p[:, 1],
+            "qa_p_normal": quantization_aware_p[:, 0],
+            "qa_p_mi": quantization_aware_p[:, 1],
             "conventional_set": encode_sets(conventional_sets),
-            "qa_set": encode_sets(qa_sets),
+            "qa_set": encode_sets(quantization_aware_sets),
             "conventional_covered": conventional_covered,
             "qa_covered": qa_covered,
             "set_changed": set_changed,
         }
-    )
-    sample_table.to_csv(
+    ).to_csv(
         os.path.join(args.output_dir, "fp32_int8_sample_level.csv"), index=False
     )
 
@@ -207,13 +205,19 @@ def main() -> None:
             "epsilon": args.epsilon,
             "seed": args.seed,
             "fixed_model": model_path,
+            "fixed_model_sha256": model_hash,
             "fixed_calibration_set": os.path.join(args.artifact_dir, "X_cal.npy"),
             "fixed_test_fold": 10,
             "deployed_test_model": args.int8_model,
+            "deployed_test_model_sha256": sha256_file(args.int8_model),
+            "same_int8_test_predictions_for_both_workflows": True,
         },
         "conformal_workflows": rows,
         "paired_summary": paired_summary,
-        "classification": discriminative,
+        "classification": {
+            "fp32_test": classification_metrics(fp32_test_prob, y_test),
+            "int8_test": classification_metrics(int8_test_prob, y_test),
+        },
         "model_file_sizes": {
             "fp32_tflite_path": fp32_tflite_path,
             "fp32_tflite_bytes": int(os.path.getsize(fp32_tflite_path)),
@@ -224,18 +228,21 @@ def main() -> None:
             ),
         },
     }
-    dump_json(os.path.join(args.output_dir, "fp32_int8_calibration_results.json"), payload)
+    dump_json(
+        os.path.join(args.output_dir, "fp32_int8_calibration_results.json"),
+        payload,
+    )
 
     table = paper_table(rows)
     with open(
-        os.path.join(args.output_dir, "fp32_int8_paper_table.txt"), "w", encoding="utf-8"
+        os.path.join(args.output_dir, "fp32_int8_paper_table.txt"),
+        "w",
+        encoding="utf-8",
     ) as handle:
         handle.write(table + "\n")
-
     print("\n" + table)
     print("\nPaired set changes:")
     print(json.dumps(paired_summary, indent=2))
-    print(f"\nSaved reviewer-comparison outputs to: {args.output_dir}")
 
 
 if __name__ == "__main__":
